@@ -122,29 +122,30 @@ public class FloatingWidgetService extends Service {
 
                         floatingParams.x =
                                 initialX +
-                                (int) (initialTouchX - event.getRawX());
+                                        (int) (initialTouchX - event.getRawX());
 
                         floatingParams.y =
                                 initialY +
-                                (int) (event.getRawY() - initialTouchY);
-                        selectionParams.width = screenWidth -floatingParams.x-65-10;
-                        selectionParams.x =floatingParams.x+10;
-                        selectionParams.y = floatingParams.y + (65-SELECTION_HEIGHT)/2;
+                                        (int) (event.getRawY() - initialTouchY);
+
 
                         // Move GREEN button
                         windowManager.updateViewLayout(
-                                selectionView,
-                                selectionParams
+                                floatingView,
+                                floatingParams
                         );
 
 
-                        // Keep BLUE rectangle attached
+                        // Resize and move BLUE rectangle
+                        selectionParams.width =
+                                screenWidth - floatingParams.x - 65 - 10;
+
                         selectionParams.x =
-                                floatingParams.x + 65 + 10;
+                                floatingParams.x + 10;
 
                         selectionParams.y =
                                 floatingParams.y +
-                                (65 - SELECTION_HEIGHT) / 2;
+                                        (65 - SELECTION_HEIGHT) / 2;
 
 
                         windowManager.updateViewLayout(
@@ -153,8 +154,6 @@ public class FloatingWidgetService extends Service {
                         );
 
                         return true;
-
-
                     case MotionEvent.ACTION_UP:
 
                         return true;
