@@ -1,5 +1,186 @@
 package com.deaboi.chatpu;
 
+import android.app.Activity;
+import android.content.Intent;
+import android.media.projection.MediaProjectionManager;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.Settings;
+import android.widget.Button;
+import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    private Button buttonStart;
+
+    private MediaProjectionManager mediaProjectionManager;
+
+    private final ActivityResultLauncher<Intent> screenCaptureLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+
+                        if (result.getResultCode() == Activity.RESULT_OK
+                                && result.getData() != null) {
+
+                            Intent serviceIntent =
+                                    new Intent(
+                                            this,
+                                            FloatingWidgetService.class
+                                    );
+
+                            serviceIntent.setAction(
+                                    FloatingWidgetService.ACTION_CAPTURE_PERMISSION
+                            );
+
+                            serviceIntent.putExtra(
+                                    "resultCode",
+                                    result.getResultCode()
+                            );
+
+                            serviceIntent.putExtra(
+                                    "resultData",
+                                    result.getData()
+                            );
+
+                            startService(serviceIntent);
+
+                        } else {
+
+                            Toast.makeText(
+                                    this,
+                                    "Screen capture permission cancelled",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+
+                        finish();
+                    }
+            );
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+
+        super.onCreate(savedInstanceState);
+
+        setContentView(R.layout.activity_main);
+
+        buttonStart =
+                findViewById(R.id.buttonStart);
+
+        mediaProjectionManager =
+                (MediaProjectionManager)
+                        getSystemService(
+                                MEDIA_PROJECTION_SERVICE
+                        );
+
+        buttonStart.setOnClickListener(
+                v -> startChatpu()
+        );
+
+
+        /*
+         * If FloatingWidgetService opened this Activity
+         * specifically to request screen capture permission.
+         */
+        if (FloatingWidgetService.ACTION_REQUEST_CAPTURE.equals(
+                getIntent().getAction())) {
+
+            requestScreenCapture();
+        }
+    }
+
+
+    private void startChatpu() {
+
+        // =================================================
+        // CHECK OVERLAY PERMISSION
+        // =================================================
+
+        if (!Settings.canDrawOverlays(this)) {
+
+            Toast.makeText(
+                    this,
+                    "Please allow Display over other apps",
+                    Toast.LENGTH_LONG
+            ).show();
+
+            Intent intent =
+                    new Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse(
+                                    "package:" + getPackageName()
+                            )
+                    );
+
+            startActivity(intent);
+
+            return;
+        }
+
+
+        // =================================================
+        // START FLOATING SERVICE
+        // =================================================
+
+        Intent floatingIntent =
+                new Intent(
+                        this,
+                        FloatingWidgetService.class
+                );
+
+        startService(
+                floatingIntent
+        );
+
+
+        Toast.makeText(
+                this,
+                "Chatpu started. Open WhatsApp.",
+                Toast.LENGTH_SHORT
+        ).show();
+    }
+
+
+    private void requestScreenCapture() {
+
+        if (mediaProjectionManager == null) {
+
+            Toast.makeText(
+                    this,
+                    "Screen capture is not available",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            finish();
+
+            return;
+        }
+
+
+        Intent captureIntent =
+                mediaProjectionManager
+                        .createScreenCaptureIntent();
+
+        screenCaptureLauncher.launch(
+                captureIntent
+        );
+    }
+}
+
+"FloatingWidgetService.java"
+
+This is your existing file with the short-tap capture trigger added, while keeping your current drag, long-press, blue rectangle and resize behavior.
+
+:::writing{variant="standard" id="67291" title="FloatingWidgetService.java"}
+
+package com.deaboi.chatpu;
+
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.Canvas;
@@ -18,17 +199,18 @@ import androidx.annotation.Nullable;
 
 public class FloatingWidgetService extends Service {
 
-private static final String ACTION_SHOW =
-        "com.deaboi.chatpu.SHOW_WIDGET";
+    public static final String ACTION_SHOW =
+            "com.deaboi.chatpu.SHOW_WIDGET";
 
-private static final String ACTION_HIDE =
-        "com.deaboi.chatpu.HIDE_WIDGET";
+    public static final String ACTION_HIDE =
+            "com.deaboi.chatpu.HIDE_WIDGET";
 
-//    public static final String ACTION_SHOW =
-//            "com.deaboi.chatpu.ACTION_SHOW";
+    public static final String ACTION_REQUEST_CAPTURE =
+            "com.deaboi.chatpu.REQUEST_CAPTURE";
 
-//    public static final String ACTION_HIDE =
-//            "com.deaboi.chatpu.ACTION_HIDE";
+    public static final String ACTION_CAPTURE_PERMISSION =
+            "com.deaboi.chatpu.CAPTURE_PERMISSION";
+
 
     private WindowManager windowManager;
 
@@ -55,9 +237,9 @@ private static final String ACTION_HIDE =
     private float downY;
 
 
-    // --------------------------------------------------
-    // CREATE SERVICE
-    // --------------------------------------------------
+    // =====================================================
+    // CREATE
+    // =====================================================
 
     @Override
     public void onCreate() {
@@ -75,9 +257,9 @@ private static final String ACTION_HIDE =
         screenWidth = metrics.widthPixels;
 
 
-        // ==================================================
+        // =====================================================
         // GREEN FLOATING BUTTON
-        // ==================================================
+        // =====================================================
 
         floatingView =
                 LayoutInflater.from(this)
@@ -107,9 +289,9 @@ private static final String ACTION_HIDE =
         );
 
 
-        // ==================================================
+        // =====================================================
         // BLUE SELECTION RECTANGLE
-        // ==================================================
+        // =====================================================
 
         selectionView =
                 new SelectionView();
@@ -120,14 +302,10 @@ private static final String ACTION_HIDE =
                                 - floatingParams.x
                                 - FLOATING_SIZE
                                 - 10,
-
                         selectionHeight,
-
                         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                                 | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-
                         PixelFormat.TRANSLUCENT
                 );
 
@@ -147,9 +325,9 @@ private static final String ACTION_HIDE =
         );
 
 
-        // ==================================================
+        // =====================================================
         // RESIZE HANDLE
-        // ==================================================
+        // =====================================================
 
         resizeHandleView =
                 new ResizeHandleView();
@@ -158,11 +336,8 @@ private static final String ACTION_HIDE =
                 new WindowManager.LayoutParams(
                         selectionParams.width,
                         RESIZE_HANDLE_HEIGHT,
-
                         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-
                         PixelFormat.TRANSLUCENT
                 );
 
@@ -183,20 +358,20 @@ private static final String ACTION_HIDE =
         );
 
 
-        // Hide selection initially
+        // =====================================================
+        // HIDE EVERYTHING INITIALLY
+        // =====================================================
 
-        selectionView.setVisibility(
-                View.GONE
-        );
+        floatingView.setVisibility(View.GONE);
 
-        resizeHandleView.setVisibility(
-                View.GONE
-        );
+        selectionView.setVisibility(View.GONE);
+
+        resizeHandleView.setVisibility(View.GONE);
 
 
-        // ==================================================
+        // =====================================================
         // GREEN BUTTON TOUCH
-        // ==================================================
+        // =====================================================
 
         floatingView.setOnTouchListener(
                 new View.OnTouchListener() {
@@ -209,6 +384,9 @@ private static final String ACTION_HIDE =
 
                     private boolean moved = false;
 
+                    private boolean longPressed = false;
+
+
                     private final Runnable longPressRunnable =
                             new Runnable() {
 
@@ -216,6 +394,8 @@ private static final String ACTION_HIDE =
                                 public void run() {
 
                                     if (!moved) {
+
+                                        longPressed = true;
 
                                         toggleSelection();
                                     }
@@ -229,11 +409,6 @@ private static final String ACTION_HIDE =
                             MotionEvent event) {
 
                         switch (event.getAction()) {
-
-
-                            // ----------------------------------
-                            // TOUCH DOWN
-                            // ----------------------------------
 
                             case MotionEvent.ACTION_DOWN:
 
@@ -257,6 +432,8 @@ private static final String ACTION_HIDE =
 
                                 moved = false;
 
+                                longPressed = false;
+
                                 handler.postDelayed(
                                         longPressRunnable,
                                         600
@@ -264,10 +441,6 @@ private static final String ACTION_HIDE =
 
                                 return true;
 
-
-                            // ----------------------------------
-                            // MOVE
-                            // ----------------------------------
 
                             case MotionEvent.ACTION_MOVE:
 
@@ -282,7 +455,6 @@ private static final String ACTION_HIDE =
                                                 event.getRawY()
                                                         - downY
                                         );
-
 
                                 if (dx > 10 || dy > 10) {
 
@@ -310,16 +482,13 @@ private static final String ACTION_HIDE =
                                                         - initialTouchY
                                         );
 
-
                                 windowManager.updateViewLayout(
                                         floatingView,
                                         floatingParams
                                 );
 
 
-                                // ----------------------------------
-                                // UPDATE BLUE RECTANGLE
-                                // ----------------------------------
+                                // Update selection width
 
                                 selectionParams.width =
                                         screenWidth
@@ -347,9 +516,7 @@ private static final String ACTION_HIDE =
                                 }
 
 
-                                // ----------------------------------
-                                // UPDATE RESIZE HANDLE
-                                // ----------------------------------
+                                // Update resize handle
 
                                 resizeHandleParams.width =
                                         selectionParams.width;
@@ -374,28 +541,51 @@ private static final String ACTION_HIDE =
                                 return true;
 
 
-                            // ----------------------------------
-                            // TOUCH UP
-                            // ----------------------------------
-
                             case MotionEvent.ACTION_UP:
 
                                 handler.removeCallbacks(
                                         longPressRunnable
                                 );
 
+
+                                // =================================================
+                                // SHORT TAP = SCREEN CAPTURE
+                                // =================================================
+
+                                if (!moved && !longPressed) {
+
+                                    Intent captureIntent =
+                                            new Intent(
+                                                    FloatingWidgetService.this,
+                                                    MainActivity.class
+                                            );
+
+                                    captureIntent.setAction(
+                                            ACTION_REQUEST_CAPTURE
+                                    );
+
+                                    captureIntent.addFlags(
+                                            Intent.FLAG_ACTIVITY_NEW_TASK
+                                                    | Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    );
+
+                                    startActivity(
+                                            captureIntent
+                                    );
+                                }
+
+                                longPressed = false;
+
                                 return true;
 
-
-                            // ----------------------------------
-                            // CANCEL
-                            // ----------------------------------
 
                             case MotionEvent.ACTION_CANCEL:
 
                                 handler.removeCallbacks(
                                         longPressRunnable
                                 );
+
+                                longPressed = false;
 
                                 return true;
                         }
@@ -406,9 +596,9 @@ private static final String ACTION_HIDE =
         );
 
 
-        // ==================================================
+        // =====================================================
         // RESIZE HANDLE TOUCH
-        // ==================================================
+        // =====================================================
 
         resizeHandleView.setOnTouchListener(
                 new View.OnTouchListener() {
@@ -425,11 +615,6 @@ private static final String ACTION_HIDE =
 
                         switch (event.getAction()) {
 
-
-                            // ----------------------------------
-                            // RESIZE DOWN
-                            // ----------------------------------
-
                             case MotionEvent.ACTION_DOWN:
 
                                 initialTouchY =
@@ -441,10 +626,6 @@ private static final String ACTION_HIDE =
                                 return true;
 
 
-                            // ----------------------------------
-                            // RESIZE MOVE
-                            // ----------------------------------
-
                             case MotionEvent.ACTION_MOVE:
 
                                 int newHeight =
@@ -454,22 +635,13 @@ private static final String ACTION_HIDE =
                                                         - initialTouchY
                                         );
 
-
-                                // Minimum height
-
                                 if (newHeight < 80) {
-
                                     newHeight = 80;
                                 }
 
-
-                                // Maximum height
-
                                 if (newHeight > 1000) {
-
                                     newHeight = 1000;
                                 }
-
 
                                 selectionHeight =
                                         newHeight;
@@ -478,15 +650,11 @@ private static final String ACTION_HIDE =
                                         newHeight;
 
 
-                                // Update rectangle
-
                                 windowManager.updateViewLayout(
                                         selectionView,
                                         selectionParams
                                 );
 
-
-                                // Update handle
 
                                 resizeHandleParams.width =
                                         selectionParams.width;
@@ -505,13 +673,8 @@ private static final String ACTION_HIDE =
                                         resizeHandleParams
                                 );
 
-
                                 return true;
 
-
-                            // ----------------------------------
-                            // RESIZE UP
-                            // ----------------------------------
 
                             case MotionEvent.ACTION_UP:
 
@@ -525,15 +688,14 @@ private static final String ACTION_HIDE =
     }
 
 
-    // ==================================================
+    // =====================================================
     // SHOW / HIDE SELECTION
-    // ==================================================
+    // =====================================================
 
     private void toggleSelection() {
 
         selectionVisible =
                 !selectionVisible;
-
 
         if (selectionVisible) {
 
@@ -558,9 +720,9 @@ private static final String ACTION_HIDE =
     }
 
 
-    // ==================================================
-    // SERVICE COMMANDS
-    // ==================================================
+    // =====================================================
+    // START COMMAND
+    // =====================================================
 
     @Override
     public int onStartCommand(
@@ -574,10 +736,6 @@ private static final String ACTION_HIDE =
                     intent.getAction();
 
 
-            // ----------------------------------
-            // SHOW GREEN BUTTON
-            // ----------------------------------
-
             if (ACTION_SHOW.equals(action)) {
 
                 if (floatingView != null) {
@@ -586,14 +744,9 @@ private static final String ACTION_HIDE =
                             View.VISIBLE
                     );
                 }
-            }
 
 
-            // ----------------------------------
-            // HIDE EVERYTHING
-            // ----------------------------------
-
-            else if (ACTION_HIDE.equals(action)) {
+            } else if (ACTION_HIDE.equals(action)) {
 
                 if (floatingView != null) {
 
@@ -602,14 +755,12 @@ private static final String ACTION_HIDE =
                     );
                 }
 
-
                 if (selectionView != null) {
 
                     selectionView.setVisibility(
                             View.GONE
                     );
                 }
-
 
                 if (resizeHandleView != null) {
 
@@ -618,26 +769,56 @@ private static final String ACTION_HIDE =
                     );
                 }
 
+                selectionVisible = false;
 
-                selectionVisible =
-                        false;
+
+            } else if (ACTION_CAPTURE_PERMISSION.equals(action)) {
+
+                /*
+                 * Permission result has reached the service.
+                 *
+                 * Actual screenshot capture will be added
+                 * in the next step.
+                 */
+
+                int resultCode =
+                        intent.getIntExtra(
+                                "resultCode",
+                                -1
+                        );
+
+                Intent resultData =
+                        intent.getParcelableExtra(
+                                "resultData"
+                        );
+
+                if (resultCode != -1
+                        && resultData != null) {
+
+                    android.util.Log.d(
+                            "CHATPU_CAPTURE",
+                            "Screen capture permission received"
+                    );
+
+                    android.util.Log.d(
+                            "CHATPU_CAPTURE",
+                            "Ready for actual screen capture"
+                    );
+                }
             }
         }
-
 
         return START_STICKY;
     }
 
 
-    // ==================================================
-    // BLUE SELECTION RECTANGLE
-    // ==================================================
+    // =====================================================
+    // BLUE RECTANGLE
+    // =====================================================
 
-    private class SelectionView
-            extends View {
+    private class SelectionView extends View {
 
         private final Paint paint;
-
 
         public SelectionView() {
 
@@ -645,8 +826,7 @@ private static final String ACTION_HIDE =
                     FloatingWidgetService.this
             );
 
-            paint =
-                    new Paint();
+            paint = new Paint();
 
             paint.setColor(
                     Color.BLUE
@@ -669,16 +849,13 @@ private static final String ACTION_HIDE =
             );
         }
 
-
         @Override
         protected void onDraw(
                 Canvas canvas) {
 
             super.onDraw(canvas);
 
-
             float padding = 3;
-
 
             canvas.drawRect(
                     padding,
@@ -691,15 +868,13 @@ private static final String ACTION_HIDE =
     }
 
 
-    // ==================================================
+    // =====================================================
     // RESIZE HANDLE
-    // ==================================================
+    // =====================================================
 
-    private class ResizeHandleView
-            extends View {
+    private class ResizeHandleView extends View {
 
         private final Paint paint;
-
 
         public ResizeHandleView() {
 
@@ -707,8 +882,7 @@ private static final String ACTION_HIDE =
                     FloatingWidgetService.this
             );
 
-            paint =
-                    new Paint();
+            paint = new Paint();
 
             paint.setColor(
                     Color.BLUE
@@ -727,13 +901,11 @@ private static final String ACTION_HIDE =
             );
         }
 
-
         @Override
         protected void onDraw(
                 Canvas canvas) {
 
             super.onDraw(canvas);
-
 
             canvas.drawRect(
                     0,
@@ -746,9 +918,9 @@ private static final String ACTION_HIDE =
     }
 
 
-    // ==================================================
+    // =====================================================
     // BIND
-    // ==================================================
+    // =====================================================
 
     @Nullable
     @Override
@@ -759,9 +931,9 @@ private static final String ACTION_HIDE =
     }
 
 
-    // ==================================================
+    // =====================================================
     // DESTROY
-    // ==================================================
+    // =====================================================
 
     @Override
     public void onDestroy() {
@@ -769,7 +941,6 @@ private static final String ACTION_HIDE =
         handler.removeCallbacksAndMessages(
                 null
         );
-
 
         if (floatingView != null) {
 
@@ -780,7 +951,6 @@ private static final String ACTION_HIDE =
             floatingView = null;
         }
 
-
         if (selectionView != null) {
 
             windowManager.removeView(
@@ -790,7 +960,6 @@ private static final String ACTION_HIDE =
             selectionView = null;
         }
 
-
         if (resizeHandleView != null) {
 
             windowManager.removeView(
@@ -799,7 +968,6 @@ private static final String ACTION_HIDE =
 
             resizeHandleView = null;
         }
-
 
         super.onDestroy();
     }
