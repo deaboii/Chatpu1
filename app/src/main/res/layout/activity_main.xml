@@ -5,7 +5,7 @@
     android:orientation="horizontal"
     android:gravity="center">
     <Button
-        android:id="@+id/start_btn"
+        android:id="@+id/buttonStart"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="start"

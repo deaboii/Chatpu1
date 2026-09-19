@@ -18,11 +18,17 @@ import androidx.annotation.Nullable;
 
 public class FloatingWidgetService extends Service {
 
-    public static final String ACTION_SHOW =
-            "com.deaboi.chatpu.SHOW_WIDGET";
+private static final String ACTION_SHOW =
+        "com.deaboi.chatpu.SHOW_WIDGET";
 
-    public static final String ACTION_HIDE =
-            "com.deaboi.chatpu.HIDE_WIDGET";
+private static final String ACTION_HIDE =
+        "com.deaboi.chatpu.HIDE_WIDGET";
+
+//    public static final String ACTION_SHOW =
+//            "com.deaboi.chatpu.ACTION_SHOW";
+
+//    public static final String ACTION_HIDE =
+//            "com.deaboi.chatpu.ACTION_HIDE";
 
     private WindowManager windowManager;
 
@@ -49,9 +55,9 @@ public class FloatingWidgetService extends Service {
     private float downY;
 
 
-    // =====================================================
-    // CREATE
-    // =====================================================
+    // --------------------------------------------------
+    // CREATE SERVICE
+    // --------------------------------------------------
 
     @Override
     public void onCreate() {
@@ -69,9 +75,9 @@ public class FloatingWidgetService extends Service {
         screenWidth = metrics.widthPixels;
 
 
-        // =====================================================
+        // ==================================================
         // GREEN FLOATING BUTTON
-        // =====================================================
+        // ==================================================
 
         floatingView =
                 LayoutInflater.from(this)
@@ -101,9 +107,9 @@ public class FloatingWidgetService extends Service {
         );
 
 
-        // =====================================================
+        // ==================================================
         // BLUE SELECTION RECTANGLE
-        // =====================================================
+        // ==================================================
 
         selectionView =
                 new SelectionView();
@@ -114,10 +120,14 @@ public class FloatingWidgetService extends Service {
                                 - floatingParams.x
                                 - FLOATING_SIZE
                                 - 10,
+
                         selectionHeight,
+
                         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                                 | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+
                         PixelFormat.TRANSLUCENT
                 );
 
@@ -137,9 +147,9 @@ public class FloatingWidgetService extends Service {
         );
 
 
-        // =====================================================
+        // ==================================================
         // RESIZE HANDLE
-        // =====================================================
+        // ==================================================
 
         resizeHandleView =
                 new ResizeHandleView();
@@ -148,8 +158,11 @@ public class FloatingWidgetService extends Service {
                 new WindowManager.LayoutParams(
                         selectionParams.width,
                         RESIZE_HANDLE_HEIGHT,
+
                         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+
                         PixelFormat.TRANSLUCENT
                 );
 
@@ -170,20 +183,20 @@ public class FloatingWidgetService extends Service {
         );
 
 
-        // =====================================================
-        // HIDE EVERYTHING INITIALLY
-        // =====================================================
+        // Hide selection initially
 
-        floatingView.setVisibility(View.GONE);
+        selectionView.setVisibility(
+                View.GONE
+        );
 
-        selectionView.setVisibility(View.GONE);
+        resizeHandleView.setVisibility(
+                View.GONE
+        );
 
-        resizeHandleView.setVisibility(View.GONE);
 
-
-        // =====================================================
+        // ==================================================
         // GREEN BUTTON TOUCH
-        // =====================================================
+        // ==================================================
 
         floatingView.setOnTouchListener(
                 new View.OnTouchListener() {
@@ -217,6 +230,11 @@ public class FloatingWidgetService extends Service {
 
                         switch (event.getAction()) {
 
+
+                            // ----------------------------------
+                            // TOUCH DOWN
+                            // ----------------------------------
+
                             case MotionEvent.ACTION_DOWN:
 
                                 initialX =
@@ -247,6 +265,10 @@ public class FloatingWidgetService extends Service {
                                 return true;
 
 
+                            // ----------------------------------
+                            // MOVE
+                            // ----------------------------------
+
                             case MotionEvent.ACTION_MOVE:
 
                                 float dx =
@@ -260,6 +282,7 @@ public class FloatingWidgetService extends Service {
                                                 event.getRawY()
                                                         - downY
                                         );
+
 
                                 if (dx > 10 || dy > 10) {
 
@@ -287,13 +310,16 @@ public class FloatingWidgetService extends Service {
                                                         - initialTouchY
                                         );
 
+
                                 windowManager.updateViewLayout(
                                         floatingView,
                                         floatingParams
                                 );
 
 
-                                // Update selection width
+                                // ----------------------------------
+                                // UPDATE BLUE RECTANGLE
+                                // ----------------------------------
 
                                 selectionParams.width =
                                         screenWidth
@@ -321,7 +347,9 @@ public class FloatingWidgetService extends Service {
                                 }
 
 
-                                // Update resize handle
+                                // ----------------------------------
+                                // UPDATE RESIZE HANDLE
+                                // ----------------------------------
 
                                 resizeHandleParams.width =
                                         selectionParams.width;
@@ -346,6 +374,10 @@ public class FloatingWidgetService extends Service {
                                 return true;
 
 
+                            // ----------------------------------
+                            // TOUCH UP
+                            // ----------------------------------
+
                             case MotionEvent.ACTION_UP:
 
                                 handler.removeCallbacks(
@@ -354,6 +386,10 @@ public class FloatingWidgetService extends Service {
 
                                 return true;
 
+
+                            // ----------------------------------
+                            // CANCEL
+                            // ----------------------------------
 
                             case MotionEvent.ACTION_CANCEL:
 
@@ -370,9 +406,9 @@ public class FloatingWidgetService extends Service {
         );
 
 
-        // =====================================================
+        // ==================================================
         // RESIZE HANDLE TOUCH
-        // =====================================================
+        // ==================================================
 
         resizeHandleView.setOnTouchListener(
                 new View.OnTouchListener() {
@@ -389,6 +425,11 @@ public class FloatingWidgetService extends Service {
 
                         switch (event.getAction()) {
 
+
+                            // ----------------------------------
+                            // RESIZE DOWN
+                            // ----------------------------------
+
                             case MotionEvent.ACTION_DOWN:
 
                                 initialTouchY =
@@ -400,6 +441,10 @@ public class FloatingWidgetService extends Service {
                                 return true;
 
 
+                            // ----------------------------------
+                            // RESIZE MOVE
+                            // ----------------------------------
+
                             case MotionEvent.ACTION_MOVE:
 
                                 int newHeight =
@@ -409,13 +454,22 @@ public class FloatingWidgetService extends Service {
                                                         - initialTouchY
                                         );
 
+
+                                // Minimum height
+
                                 if (newHeight < 80) {
+
                                     newHeight = 80;
                                 }
 
+
+                                // Maximum height
+
                                 if (newHeight > 1000) {
+
                                     newHeight = 1000;
                                 }
+
 
                                 selectionHeight =
                                         newHeight;
@@ -424,11 +478,15 @@ public class FloatingWidgetService extends Service {
                                         newHeight;
 
 
+                                // Update rectangle
+
                                 windowManager.updateViewLayout(
                                         selectionView,
                                         selectionParams
                                 );
 
+
+                                // Update handle
 
                                 resizeHandleParams.width =
                                         selectionParams.width;
@@ -447,8 +505,13 @@ public class FloatingWidgetService extends Service {
                                         resizeHandleParams
                                 );
 
+
                                 return true;
 
+
+                            // ----------------------------------
+                            // RESIZE UP
+                            // ----------------------------------
 
                             case MotionEvent.ACTION_UP:
 
@@ -462,14 +525,15 @@ public class FloatingWidgetService extends Service {
     }
 
 
-    // =====================================================
+    // ==================================================
     // SHOW / HIDE SELECTION
-    // =====================================================
+    // ==================================================
 
     private void toggleSelection() {
 
         selectionVisible =
                 !selectionVisible;
+
 
         if (selectionVisible) {
 
@@ -494,9 +558,9 @@ public class FloatingWidgetService extends Service {
     }
 
 
-    // =====================================================
-    // START COMMAND
-    // =====================================================
+    // ==================================================
+    // SERVICE COMMANDS
+    // ==================================================
 
     @Override
     public int onStartCommand(
@@ -510,6 +574,10 @@ public class FloatingWidgetService extends Service {
                     intent.getAction();
 
 
+            // ----------------------------------
+            // SHOW GREEN BUTTON
+            // ----------------------------------
+
             if (ACTION_SHOW.equals(action)) {
 
                 if (floatingView != null) {
@@ -518,8 +586,14 @@ public class FloatingWidgetService extends Service {
                             View.VISIBLE
                     );
                 }
+            }
 
-            } else if (ACTION_HIDE.equals(action)) {
+
+            // ----------------------------------
+            // HIDE EVERYTHING
+            // ----------------------------------
+
+            else if (ACTION_HIDE.equals(action)) {
 
                 if (floatingView != null) {
 
@@ -528,12 +602,14 @@ public class FloatingWidgetService extends Service {
                     );
                 }
 
+
                 if (selectionView != null) {
 
                     selectionView.setVisibility(
                             View.GONE
                     );
                 }
+
 
                 if (resizeHandleView != null) {
 
@@ -542,21 +618,26 @@ public class FloatingWidgetService extends Service {
                     );
                 }
 
-                selectionVisible = false;
+
+                selectionVisible =
+                        false;
             }
         }
+
 
         return START_STICKY;
     }
 
 
-    // =====================================================
-    // BLUE RECTANGLE
-    // =====================================================
+    // ==================================================
+    // BLUE SELECTION RECTANGLE
+    // ==================================================
 
-    private class SelectionView extends View {
+    private class SelectionView
+            extends View {
 
         private final Paint paint;
+
 
         public SelectionView() {
 
@@ -564,7 +645,8 @@ public class FloatingWidgetService extends Service {
                     FloatingWidgetService.this
             );
 
-            paint = new Paint();
+            paint =
+                    new Paint();
 
             paint.setColor(
                     Color.BLUE
@@ -587,13 +669,16 @@ public class FloatingWidgetService extends Service {
             );
         }
 
+
         @Override
         protected void onDraw(
                 Canvas canvas) {
 
             super.onDraw(canvas);
 
+
             float padding = 3;
+
 
             canvas.drawRect(
                     padding,
@@ -606,13 +691,15 @@ public class FloatingWidgetService extends Service {
     }
 
 
-    // =====================================================
+    // ==================================================
     // RESIZE HANDLE
-    // =====================================================
+    // ==================================================
 
-    private class ResizeHandleView extends View {
+    private class ResizeHandleView
+            extends View {
 
         private final Paint paint;
+
 
         public ResizeHandleView() {
 
@@ -620,7 +707,8 @@ public class FloatingWidgetService extends Service {
                     FloatingWidgetService.this
             );
 
-            paint = new Paint();
+            paint =
+                    new Paint();
 
             paint.setColor(
                     Color.BLUE
@@ -639,11 +727,13 @@ public class FloatingWidgetService extends Service {
             );
         }
 
+
         @Override
         protected void onDraw(
                 Canvas canvas) {
 
             super.onDraw(canvas);
+
 
             canvas.drawRect(
                     0,
@@ -656,9 +746,9 @@ public class FloatingWidgetService extends Service {
     }
 
 
-    // =====================================================
+    // ==================================================
     // BIND
-    // =====================================================
+    // ==================================================
 
     @Nullable
     @Override
@@ -669,9 +759,9 @@ public class FloatingWidgetService extends Service {
     }
 
 
-    // =====================================================
+    // ==================================================
     // DESTROY
-    // =====================================================
+    // ==================================================
 
     @Override
     public void onDestroy() {
@@ -679,6 +769,7 @@ public class FloatingWidgetService extends Service {
         handler.removeCallbacksAndMessages(
                 null
         );
+
 
         if (floatingView != null) {
 
@@ -689,6 +780,7 @@ public class FloatingWidgetService extends Service {
             floatingView = null;
         }
 
+
         if (selectionView != null) {
 
             windowManager.removeView(
@@ -698,6 +790,7 @@ public class FloatingWidgetService extends Service {
             selectionView = null;
         }
 
+
         if (resizeHandleView != null) {
 
             windowManager.removeView(
@@ -706,6 +799,7 @@ public class FloatingWidgetService extends Service {
 
             resizeHandleView = null;
         }
+
 
         super.onDestroy();
     }
