@@ -18,17 +18,11 @@ import androidx.annotation.Nullable;
 
 public class FloatingWidgetService extends Service {
 
-private static final String ACTION_SHOW =
-        "com.deaboi.chatpu.SHOW_WIDGET";
-
-private static final String ACTION_HIDE =
-        "com.deaboi.chatpu.HIDE_WIDGET";
-
     public static final String ACTION_SHOW =
-            "com.deaboi.chatpu.ACTION_SHOW";
+            "com.deaboi.chatpu.SHOW_WIDGET";
 
     public static final String ACTION_HIDE =
-            "com.deaboi.chatpu.ACTION_HIDE";
+            "com.deaboi.chatpu.HIDE_WIDGET";
 
     private WindowManager windowManager;
 
@@ -55,9 +49,9 @@ private static final String ACTION_HIDE =
     private float downY;
 
 
-    // --------------------------------------------------
-    // CREATE SERVICE
-    // --------------------------------------------------
+    // =====================================================
+    // CREATE
+    // =====================================================
 
     @Override
     public void onCreate() {
@@ -75,9 +69,9 @@ private static final String ACTION_HIDE =
         screenWidth = metrics.widthPixels;
 
 
-        // ==================================================
+        // =====================================================
         // GREEN FLOATING BUTTON
-        // ==================================================
+        // =====================================================
 
         floatingView =
                 LayoutInflater.from(this)
@@ -107,9 +101,9 @@ private static final String ACTION_HIDE =
         );
 
 
-        // ==================================================
+        // =====================================================
         // BLUE SELECTION RECTANGLE
-        // ==================================================
+        // =====================================================
 
         selectionView =
                 new SelectionView();
@@ -120,14 +114,10 @@ private static final String ACTION_HIDE =
                                 - floatingParams.x
                                 - FLOATING_SIZE
                                 - 10,
-
                         selectionHeight,
-
                         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                                 | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-
                         PixelFormat.TRANSLUCENT
                 );
 
@@ -147,9 +137,9 @@ private static final String ACTION_HIDE =
         );
 
 
-        // ==================================================
+        // =====================================================
         // RESIZE HANDLE
-        // ==================================================
+        // =====================================================
 
         resizeHandleView =
                 new ResizeHandleView();
@@ -158,11 +148,8 @@ private static final String ACTION_HIDE =
                 new WindowManager.LayoutParams(
                         selectionParams.width,
                         RESIZE_HANDLE_HEIGHT,
-
                         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-
                         PixelFormat.TRANSLUCENT
                 );
 
@@ -183,20 +170,20 @@ private static final String ACTION_HIDE =
         );
 
 
-        // Hide selection initially
+        // =====================================================
+        // HIDE EVERYTHING INITIALLY
+        // =====================================================
 
-        selectionView.setVisibility(
-                View.GONE
-        );
+        floatingView.setVisibility(View.GONE);
 
-        resizeHandleView.setVisibility(
-                View.GONE
-        );
+        selectionView.setVisibility(View.GONE);
+
+        resizeHandleView.setVisibility(View.GONE);
 
 
-        // ==================================================
+        // =====================================================
         // GREEN BUTTON TOUCH
-        // ==================================================
+        // =====================================================
 
         floatingView.setOnTouchListener(
                 new View.OnTouchListener() {
@@ -230,11 +217,6 @@ private static final String ACTION_HIDE =
 
                         switch (event.getAction()) {
 
-
-                            // ----------------------------------
-                            // TOUCH DOWN
-                            // ----------------------------------
-
                             case MotionEvent.ACTION_DOWN:
 
                                 initialX =
@@ -265,10 +247,6 @@ private static final String ACTION_HIDE =
                                 return true;
 
 
-                            // ----------------------------------
-                            // MOVE
-                            // ----------------------------------
-
                             case MotionEvent.ACTION_MOVE:
 
                                 float dx =
@@ -282,7 +260,6 @@ private static final String ACTION_HIDE =
                                                 event.getRawY()
                                                         - downY
                                         );
-
 
                                 if (dx > 10 || dy > 10) {
 
@@ -310,16 +287,13 @@ private static final String ACTION_HIDE =
                                                         - initialTouchY
                                         );
 
-
                                 windowManager.updateViewLayout(
                                         floatingView,
                                         floatingParams
                                 );
 
 
-                                // ----------------------------------
-                                // UPDATE BLUE RECTANGLE
-                                // ----------------------------------
+                                // Update selection width
 
                                 selectionParams.width =
                                         screenWidth
@@ -347,9 +321,7 @@ private static final String ACTION_HIDE =
                                 }
 
 
-                                // ----------------------------------
-                                // UPDATE RESIZE HANDLE
-                                // ----------------------------------
+                                // Update resize handle
 
                                 resizeHandleParams.width =
                                         selectionParams.width;
@@ -374,10 +346,6 @@ private static final String ACTION_HIDE =
                                 return true;
 
 
-                            // ----------------------------------
-                            // TOUCH UP
-                            // ----------------------------------
-
                             case MotionEvent.ACTION_UP:
 
                                 handler.removeCallbacks(
@@ -386,10 +354,6 @@ private static final String ACTION_HIDE =
 
                                 return true;
 
-
-                            // ----------------------------------
-                            // CANCEL
-                            // ----------------------------------
 
                             case MotionEvent.ACTION_CANCEL:
 
@@ -406,9 +370,9 @@ private static final String ACTION_HIDE =
         );
 
 
-        // ==================================================
+        // =====================================================
         // RESIZE HANDLE TOUCH
-        // ==================================================
+        // =====================================================
 
         resizeHandleView.setOnTouchListener(
                 new View.OnTouchListener() {
@@ -425,11 +389,6 @@ private static final String ACTION_HIDE =
 
                         switch (event.getAction()) {
 
-
-                            // ----------------------------------
-                            // RESIZE DOWN
-                            // ----------------------------------
-
                             case MotionEvent.ACTION_DOWN:
 
                                 initialTouchY =
@@ -441,10 +400,6 @@ private static final String ACTION_HIDE =
                                 return true;
 
 
-                            // ----------------------------------
-                            // RESIZE MOVE
-                            // ----------------------------------
-
                             case MotionEvent.ACTION_MOVE:
 
                                 int newHeight =
@@ -454,22 +409,13 @@ private static final String ACTION_HIDE =
                                                         - initialTouchY
                                         );
 
-
-                                // Minimum height
-
                                 if (newHeight < 80) {
-
                                     newHeight = 80;
                                 }
 
-
-                                // Maximum height
-
                                 if (newHeight > 1000) {
-
                                     newHeight = 1000;
                                 }
-
 
                                 selectionHeight =
                                         newHeight;
@@ -478,15 +424,11 @@ private static final String ACTION_HIDE =
                                         newHeight;
 
 
-                                // Update rectangle
-
                                 windowManager.updateViewLayout(
                                         selectionView,
                                         selectionParams
                                 );
 
-
-                                // Update handle
 
                                 resizeHandleParams.width =
                                         selectionParams.width;
@@ -505,13 +447,8 @@ private static final String ACTION_HIDE =
                                         resizeHandleParams
                                 );
 
-
                                 return true;
 
-
-                            // ----------------------------------
-                            // RESIZE UP
-                            // ----------------------------------
 
                             case MotionEvent.ACTION_UP:
 
@@ -525,15 +462,14 @@ private static final String ACTION_HIDE =
     }
 
 
-    // ==================================================
+    // =====================================================
     // SHOW / HIDE SELECTION
-    // ==================================================
+    // =====================================================
 
     private void toggleSelection() {
 
         selectionVisible =
                 !selectionVisible;
-
 
         if (selectionVisible) {
 
@@ -558,9 +494,9 @@ private static final String ACTION_HIDE =
     }
 
 
-    // ==================================================
-    // SERVICE COMMANDS
-    // ==================================================
+    // =====================================================
+    // START COMMAND
+    // =====================================================
 
     @Override
     public int onStartCommand(
@@ -574,10 +510,6 @@ private static final String ACTION_HIDE =
                     intent.getAction();
 
 
-            // ----------------------------------
-            // SHOW GREEN BUTTON
-            // ----------------------------------
-
             if (ACTION_SHOW.equals(action)) {
 
                 if (floatingView != null) {
@@ -586,14 +518,8 @@ private static final String ACTION_HIDE =
                             View.VISIBLE
                     );
                 }
-            }
 
-
-            // ----------------------------------
-            // HIDE EVERYTHING
-            // ----------------------------------
-
-            else if (ACTION_HIDE.equals(action)) {
+            } else if (ACTION_HIDE.equals(action)) {
 
                 if (floatingView != null) {
 
@@ -602,14 +528,12 @@ private static final String ACTION_HIDE =
                     );
                 }
 
-
                 if (selectionView != null) {
 
                     selectionView.setVisibility(
                             View.GONE
                     );
                 }
-
 
                 if (resizeHandleView != null) {
 
@@ -618,26 +542,21 @@ private static final String ACTION_HIDE =
                     );
                 }
 
-
-                selectionVisible =
-                        false;
+                selectionVisible = false;
             }
         }
-
 
         return START_STICKY;
     }
 
 
-    // ==================================================
-    // BLUE SELECTION RECTANGLE
-    // ==================================================
+    // =====================================================
+    // BLUE RECTANGLE
+    // =====================================================
 
-    private class SelectionView
-            extends View {
+    private class SelectionView extends View {
 
         private final Paint paint;
-
 
         public SelectionView() {
 
@@ -645,8 +564,7 @@ private static final String ACTION_HIDE =
                     FloatingWidgetService.this
             );
 
-            paint =
-                    new Paint();
+            paint = new Paint();
 
             paint.setColor(
                     Color.BLUE
@@ -669,16 +587,13 @@ private static final String ACTION_HIDE =
             );
         }
 
-
         @Override
         protected void onDraw(
                 Canvas canvas) {
 
             super.onDraw(canvas);
 
-
             float padding = 3;
-
 
             canvas.drawRect(
                     padding,
@@ -691,15 +606,13 @@ private static final String ACTION_HIDE =
     }
 
 
-    // ==================================================
+    // =====================================================
     // RESIZE HANDLE
-    // ==================================================
+    // =====================================================
 
-    private class ResizeHandleView
-            extends View {
+    private class ResizeHandleView extends View {
 
         private final Paint paint;
-
 
         public ResizeHandleView() {
 
@@ -707,8 +620,7 @@ private static final String ACTION_HIDE =
                     FloatingWidgetService.this
             );
 
-            paint =
-                    new Paint();
+            paint = new Paint();
 
             paint.setColor(
                     Color.BLUE
@@ -727,13 +639,11 @@ private static final String ACTION_HIDE =
             );
         }
 
-
         @Override
         protected void onDraw(
                 Canvas canvas) {
 
             super.onDraw(canvas);
-
 
             canvas.drawRect(
                     0,
@@ -746,9 +656,9 @@ private static final String ACTION_HIDE =
     }
 
 
-    // ==================================================
+    // =====================================================
     // BIND
-    // ==================================================
+    // =====================================================
 
     @Nullable
     @Override
@@ -759,9 +669,9 @@ private static final String ACTION_HIDE =
     }
 
 
-    // ==================================================
+    // =====================================================
     // DESTROY
-    // ==================================================
+    // =====================================================
 
     @Override
     public void onDestroy() {
@@ -769,7 +679,6 @@ private static final String ACTION_HIDE =
         handler.removeCallbacksAndMessages(
                 null
         );
-
 
         if (floatingView != null) {
 
@@ -780,7 +689,6 @@ private static final String ACTION_HIDE =
             floatingView = null;
         }
 
-
         if (selectionView != null) {
 
             windowManager.removeView(
@@ -789,7 +697,6 @@ private static final String ACTION_HIDE =
 
             selectionView = null;
         }
-
 
         if (resizeHandleView != null) {
 
@@ -800,194 +707,6 @@ private static final String ACTION_HIDE =
             resizeHandleView = null;
         }
 
-
         super.onDestroy();
     }
 }
-
-"MessageAccessibilityService.java"
-
-This version detects whether the current accessibility window is WhatsApp and tells the floating service to show/hide the green button.
-
-:::writing{variant="standard" id="74106" title="MessageAccessibilityService.java"}
-
-package com.deaboi.chatpu;
-
-import android.accessibilityservice.AccessibilityService;
-import android.content.Intent;
-import android.util.Log;
-import android.view.accessibility.AccessibilityEvent;
-import android.view.accessibility.AccessibilityNodeInfo;
-
-public class MessageAccessibilityService
-        extends AccessibilityService {
-
-
-    // ==================================================
-    // ACCESSIBILITY EVENT
-    // ==================================================
-
-    @Override
-    public void onAccessibilityEvent(
-            AccessibilityEvent event) {
-
-        if (event.getPackageName() == null) {
-            return;
-        }
-
-
-        String packageName =
-                event.getPackageName().toString();
-
-
-        // ==================================================
-        // WHATSAPP
-        // ==================================================
-
-        if (packageName.equals("com.whatsapp")) {
-
-            showFloatingWidget();
-
-            AccessibilityNodeInfo root =
-                    getRootInActiveWindow();
-
-            if (root != null) {
-
-                readNode(root);
-            }
-
-        }
-
-
-        // ==================================================
-        // ANY OTHER APP
-        // ==================================================
-
-        else {
-
-            hideFloatingWidget();
-        }
-    }
-
-
-    // ==================================================
-    // SHOW FLOATING WIDGET
-    // ==================================================
-
-    private void showFloatingWidget() {
-
-        Intent intent =
-                new Intent(
-                        this,
-                        FloatingWidgetService.class
-                );
-
-        intent.setAction(
-                FloatingWidgetService.ACTION_SHOW
-        );
-
-        startService(intent);
-    }
-
-
-    // ==================================================
-    // HIDE FLOATING WIDGET
-    // ==================================================
-
-    private void hideFloatingWidget() {
-
-        Intent intent =
-                new Intent(
-                        this,
-                        FloatingWidgetService.class
-                );
-
-        intent.setAction(
-                FloatingWidgetService.ACTION_HIDE
-        );
-
-        startService(intent);
-    }
-
-
-    // ==================================================
-    // READ WHATSAPP NODES
-    // ==================================================
-
-    private void readNode(
-            AccessibilityNodeInfo node) {
-
-
-        if (node.getText() != null) {
-
-            AccessibilityNodeInfo p1 =
-                    node.getParent();
-
-            AccessibilityNodeInfo p2 =
-                    p1 != null
-                            ? p1.getParent()
-                            : null;
-
-            AccessibilityNodeInfo p3 =
-                    p2 != null
-                            ? p2.getParent()
-                            : null;
-
-
-            Log.d(
-                    "WHATSAPP_NODE",
-
-                    "TEXT=" + node.getText()
-                            + "\nP1="
-                            + (
-                            p1 != null
-                                    ? p1.toString()
-                                    : "null"
-                    )
-                            + "\nP2="
-                            + (
-                            p2 != null
-                                    ? p2.toString()
-                                    : "null"
-                    )
-                            + "\nP3="
-                            + (
-                            p3 != null
-                                    ? p3.toString()
-                                    : "null"
-                    )
-            );
-        }
-
-
-        // Read child nodes
-
-        for (
-                int i = 0;
-                i < node.getChildCount();
-                i++
-        ) {
-
-            AccessibilityNodeInfo child =
-                    node.getChild(i);
-
-
-            if (child != null) {
-
-                readNode(child);
-            }
-        }
-    }
-
-
-    // ==================================================
-    // ACCESSIBILITY INTERRUPTED
-    // ==================================================
-
-    @Override
-    public void onInterrupt() {
-
-    }
-}
-
-Important: if you already have "FloatingWidgetService" running, rebuild the app and restart the services after replacing these files. Don't use Android Studio's “Create method "setWhatsAppVisible"” anymore—the new code doesn't need that method.
