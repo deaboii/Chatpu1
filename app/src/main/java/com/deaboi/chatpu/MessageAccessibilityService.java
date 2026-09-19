@@ -1,78 +1,109 @@
 package com.deaboi.chatpu;
 
 import android.accessibilityservice.AccessibilityService;
+import android.content.Intent;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
-public class MessageAccessibilityService extends AccessibilityService {
+public class MessageAccessibilityService
+        extends AccessibilityService {
 
-    private boolean whatsappActive = false;
+
+    // ==================================================
+    // ACCESSIBILITY EVENT
+    // ==================================================
 
     @Override
-    public void onAccessibilityEvent(AccessibilityEvent event) {
+    public void onAccessibilityEvent(
+            AccessibilityEvent event) {
 
         if (event.getPackageName() == null) {
             return;
         }
 
+
         String packageName =
                 event.getPackageName().toString();
 
-        boolean isWhatsApp =
-                packageName.equals("com.whatsapp");
 
+        // ==================================================
+        // WHATSAPP
+        // ==================================================
 
-        // -----------------------------
-        // CONTROL FLOATING WIDGET
-        // -----------------------------
+        if (packageName.equals("com.whatsapp")) {
 
-        if (isWhatsApp && !whatsappActive) {
+            showFloatingWidget();
 
-            whatsappActive = true;
+            AccessibilityNodeInfo root =
+                    getRootInActiveWindow();
 
-            FloatingWidgetService.setWhatsAppVisible(
-                    true
-            );
+            if (root != null) {
 
-        } else if (!isWhatsApp && whatsappActive) {
+                readNode(root);
+            }
 
-            whatsappActive = false;
-
-            FloatingWidgetService.setWhatsAppVisible(
-                    false
-            );
         }
 
 
-        // Only process WhatsApp nodes
-        if (!isWhatsApp) {
-            return;
-        }
+        // ==================================================
+        // ANY OTHER APP
+        // ==================================================
 
+        else {
 
-        // -----------------------------
-        // EXISTING WHATSAPP NODE READING
-        // -----------------------------
-
-        AccessibilityNodeInfo root =
-                getRootInActiveWindow();
-
-        if (root != null) {
-
-            readNode(root);
+            hideFloatingWidget();
         }
     }
 
 
-    @Override
-    public void onInterrupt() {
+    // ==================================================
+    // SHOW FLOATING WIDGET
+    // ==================================================
 
+    private void showFloatingWidget() {
+
+        Intent intent =
+                new Intent(
+                        this,
+                        FloatingWidgetService.class
+                );
+
+        intent.setAction(
+                FloatingWidgetService.ACTION_SHOW
+        );
+
+        startService(intent);
     }
 
+
+    // ==================================================
+    // HIDE FLOATING WIDGET
+    // ==================================================
+
+    private void hideFloatingWidget() {
+
+        Intent intent =
+                new Intent(
+                        this,
+                        FloatingWidgetService.class
+                );
+
+        intent.setAction(
+                FloatingWidgetService.ACTION_HIDE
+        );
+
+        startService(intent);
+    }
+
+
+    // ==================================================
+    // READ WHATSAPP NODES
+    // ==================================================
 
     private void readNode(
             AccessibilityNodeInfo node) {
+
 
         if (node.getText() != null) {
 
@@ -92,34 +123,56 @@ public class MessageAccessibilityService extends AccessibilityService {
 
             Log.d(
                     "WHATSAPP_NODE",
+
                     "TEXT=" + node.getText()
                             + "\nP1="
-                            + (p1 != null
-                            ? p1.toString()
-                            : "null")
+                            + (
+                            p1 != null
+                                    ? p1.toString()
+                                    : "null"
+                    )
                             + "\nP2="
-                            + (p2 != null
-                            ? p2.toString()
-                            : "null")
+                            + (
+                            p2 != null
+                                    ? p2.toString()
+                                    : "null"
+                    )
                             + "\nP3="
-                            + (p3 != null
-                            ? p3.toString()
-                            : "null")
+                            + (
+                            p3 != null
+                                    ? p3.toString()
+                                    : "null"
+                    )
             );
         }
 
 
-        for (int i = 0;
-             i < node.getChildCount();
-             i++) {
+        // Read child nodes
+
+        for (
+                int i = 0;
+                i < node.getChildCount();
+                i++
+        ) {
 
             AccessibilityNodeInfo child =
                     node.getChild(i);
+
 
             if (child != null) {
 
                 readNode(child);
             }
         }
+    }
+
+
+    // ==================================================
+    // ACCESSIBILITY INTERRUPTED
+    // ==================================================
+
+    @Override
+    public void onInterrupt() {
+
     }
 }
