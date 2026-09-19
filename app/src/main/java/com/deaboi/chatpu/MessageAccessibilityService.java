@@ -6,181 +6,127 @@ import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 public class MessageAccessibilityService
-        extends AccessibilityService {
+extends AccessibilityService {
 
-    private static final String ACTION_SHOW =
-            "com.deaboi.chatpu.SHOW_WIDGET";
+@Override
+protected void onServiceConnected() {
 
-    private static final String ACTION_HIDE =
-            "com.deaboi.chatpu.HIDE_WIDGET";
+    super.onServiceConnected();
 
+    checkCurrentApp();
+}
 
-    // =====================================================
-    // ACCESSIBILITY SERVICE CONNECTED
-    // =====================================================
+@Override
+public void onAccessibilityEvent(
+        AccessibilityEvent event) {
 
-    @Override
-    protected void onServiceConnected() {
-
-        super.onServiceConnected();
+    if (event.getEventType()
+            == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            || event.getEventType()
+            == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
 
         checkCurrentApp();
     }
+}
 
+private void checkCurrentApp() {
 
-    // =====================================================
-    // ACCESSIBILITY EVENT
-    // =====================================================
+    AccessibilityNodeInfo root =
+            getRootInActiveWindow();
 
-    @Override
-    public void onAccessibilityEvent(
-            AccessibilityEvent event) {
+    if (root == null) {
 
-        if (event.getEventType()
-                == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+        hideFloatingWidget();
 
-            checkCurrentApp();
-        }
+        return;
     }
 
+    CharSequence packageName =
+            root.getPackageName();
 
-    // =====================================================
-    // CHECK CURRENT APP
-    // =====================================================
+    if (packageName == null) {
 
-    private void checkCurrentApp() {
+        hideFloatingWidget();
 
-        AccessibilityNodeInfo root =
-                getRootInActiveWindow();
-
-        if (root == null) {
-
-            hideFloatingWidget();
-
-            return;
-        }
-
-
-        CharSequence packageName =
-                root.getPackageName();
-
-        if (packageName == null) {
-
-            hideFloatingWidget();
-
-            return;
-        }
-
-
-        String currentPackage =
-                packageName.toString();
-
-
-        // =================================================
-        // WHATSAPP
-        // =================================================
-
-        if (currentPackage.equals("com.whatsapp")) {
-
-            showFloatingWidget();
-        }
-
-
-        // =================================================
-        // ANY OTHER APP
-        // =================================================
-
-        else {
-
-            hideFloatingWidget();
-        }
+        return;
     }
 
+    String currentPackage =
+            packageName.toString();
 
-    // =====================================================
-    // SHOW
-    // =====================================================
+    if (currentPackage.equals("com.whatsapp")) {
 
-    private void showFloatingWidget() {
+        showFloatingWidget();
 
-        Intent intent =
-                new Intent(
-                        this,
-                        FloatingWidgetService.class
-                );
+    } else {
 
-        intent.setAction(
-                ACTION_SHOW
-        );
-
-        startService(intent);
+        hideFloatingWidget();
     }
+}
 
+private void showFloatingWidget() {
 
-    // =====================================================
-    // HIDE
-    // =====================================================
-
-    private void hideFloatingWidget() {
-
-        Intent intent =
-                new Intent(
-                        this,
-                        FloatingWidgetService.class
-                );
-
-        intent.setAction(
-                ACTION_HIDE
-        );
-
-        startService(intent);
-    }
-
-
-    // =====================================================
-    // READ WHATSAPP NODES
-    // =====================================================
-
-    private void readNode(
-            AccessibilityNodeInfo node) {
-
-        if (node == null) {
-            return;
-        }
-
-
-        if (node.getText() != null) {
-
-            android.util.Log.d(
-                    "WHATSAPP_NODE",
-                    "TEXT=" + node.getText()
+    Intent intent =
+            new Intent(
+                    this,
+                    FloatingWidgetService.class
             );
-        }
 
+    intent.setAction(
+            FloatingWidgetService.ACTION_SHOW
+    );
 
-        for (
-                int i = 0;
-                i < node.getChildCount();
-                i++
-        ) {
+    startService(intent);
+}
 
-            AccessibilityNodeInfo child =
-                    node.getChild(i);
+private void hideFloatingWidget() {
 
-            if (child != null) {
+    Intent intent =
+            new Intent(
+                    this,
+                    FloatingWidgetService.class
+            );
 
-                readNode(child);
-            }
-        }
+    intent.setAction(
+            FloatingWidgetService.ACTION_HIDE
+    );
+
+    startService(intent);
+}
+
+private void readNode(
+        AccessibilityNodeInfo node) {
+
+    if (node == null) {
+        return;
     }
 
+    if (node.getText() != null) {
 
-    // =====================================================
-    // INTERRUPT
-    // =====================================================
-
-    @Override
-    public void onInterrupt() {
-
+        android.util.Log.d(
+                "WHATSAPP_NODE",
+                "TEXT=" + node.getText()
+        );
     }
+
+    for (
+            int i = 0;
+            i < node.getChildCount();
+            i++
+    ) {
+
+        AccessibilityNodeInfo child =
+                node.getChild(i);
+
+        if (child != null) {
+
+            readNode(child);
+        }
+    }
+}
+
+@Override
+public void onInterrupt() {
+}
+
 }
