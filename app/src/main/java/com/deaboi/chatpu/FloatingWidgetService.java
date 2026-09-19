@@ -18,6 +18,12 @@ import androidx.annotation.Nullable;
 
 public class FloatingWidgetService extends Service {
 
+private static final String ACTION_SHOW =
+        "com.deaboi.chatpu.SHOW_WIDGET";
+
+private static final String ACTION_HIDE =
+        "com.deaboi.chatpu.HIDE_WIDGET";
+
     public static final String ACTION_SHOW =
             "com.deaboi.chatpu.ACTION_SHOW";
 
