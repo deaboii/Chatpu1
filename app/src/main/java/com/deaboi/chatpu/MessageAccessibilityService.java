@@ -17,87 +17,116 @@ public class MessageAccessibilityService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
 
-        if (event.getPackageName() == null) {
-            return;
-        }
+        // Only check window changes
+        // This tells us which app is currently in front.
 
-        String packageName =
-                event.getPackageName().toString();
+        if (event.getEventType()
+                == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
 
-
-        // WhatsApp is open
-        if (packageName.equals("com.whatsapp")) {
-
-            Intent intent =
-                    new Intent(
-                            this,
-                            FloatingWidgetService.class
-                    );
-
-            intent.setAction(ACTION_SHOW);
-
-            startService(intent);
-
-
-            // Read WhatsApp screen
-            AccessibilityNodeInfo root =
-                    getRootInActiveWindow();
-
-            if (root != null) {
-                readNode(root);
-            }
-
-        }
-
-        // Another app is open
-        else {
-
-            Intent intent =
-                    new Intent(
-                            this,
-                            FloatingWidgetService.class
-                    );
-
-            intent.setAction(ACTION_HIDE);
-
-            startService(intent);
+            checkCurrentApp();
         }
     }
 
 
+    private void checkCurrentApp() {
+
+        AccessibilityNodeInfo root =
+                getRootInActiveWindow();
+
+        if (root == null) {
+            hideFloatingWidget();
+            return;
+        }
+
+
+        CharSequence packageName =
+                root.getPackageName();
+
+        if (packageName == null) {
+            hideFloatingWidget();
+            return;
+        }
+
+
+        String currentPackage =
+                packageName.toString();
+
+
+        // ==========================================
+        // WHATSAPP
+        // ==========================================
+
+        if (currentPackage.equals("com.whatsapp")) {
+
+            showFloatingWidget();
+
+        }
+
+
+        // ==========================================
+        // ANY OTHER APP
+        // ==========================================
+
+        else {
+
+            hideFloatingWidget();
+        }
+    }
+
+
+    // ==========================================
+    // SHOW WIDGET
+    // ==========================================
+
+    private void showFloatingWidget() {
+
+        Intent intent =
+                new Intent(
+                        this,
+                        FloatingWidgetService.class
+                );
+
+        intent.setAction(ACTION_SHOW);
+
+        startService(intent);
+    }
+
+
+    // ==========================================
+    // HIDE WIDGET
+    // ==========================================
+
+    private void hideFloatingWidget() {
+
+        Intent intent =
+                new Intent(
+                        this,
+                        FloatingWidgetService.class
+                );
+
+        intent.setAction(ACTION_HIDE);
+
+        startService(intent);
+    }
+
+
+    // ==========================================
+    // READ WHATSAPP NODES
+    // ==========================================
+
     private void readNode(
             AccessibilityNodeInfo node) {
 
+        if (node == null) {
+            return;
+        }
+
+
         if (node.getText() != null) {
-
-            AccessibilityNodeInfo p1 =
-                    node.getParent();
-
-            AccessibilityNodeInfo p2 =
-                    p1 != null
-                            ? p1.getParent()
-                            : null;
-
-            AccessibilityNodeInfo p3 =
-                    p2 != null
-                            ? p2.getParent()
-                            : null;
 
             android.util.Log.d(
                     "WHATSAPP_NODE",
                     "TEXT=" + node.getText()
-                            + "\nP1=" +
-                            (p1 != null
-                                    ? p1.toString()
-                                    : "null")
-                            + "\nP2=" +
-                            (p2 != null
-                                    ? p2.toString()
-                                    : "null")
-                            + "\nP3=" +
-                            (p3 != null
-                                    ? p3.toString()
-                                    : "null")
             );
         }
 
@@ -112,6 +141,7 @@ public class MessageAccessibilityService extends AccessibilityService {
                     node.getChild(i);
 
             if (child != null) {
+
                 readNode(child);
             }
         }
@@ -124,61 +154,29 @@ public class MessageAccessibilityService extends AccessibilityService {
     }
 }
 
-Then add these two constants to "FloatingWidgetService.java"
+One more important change
 
-Put them immediately below:
+Your "FloatingWidgetService" should not automatically show the widget when it starts.
 
-public class FloatingWidgetService extends Service {
+At the end of "onCreate()", you already have:
 
-Add:
+selectionView.setVisibility(View.GONE);
+resizeHandleView.setVisibility(View.GONE);
 
-private static final String ACTION_SHOW =
-        "com.deaboi.chatpu.SHOW_WIDGET";
+Change/add this immediately after it:
 
-private static final String ACTION_HIDE =
-        "com.deaboi.chatpu.HIDE_WIDGET";
+floatingView.setVisibility(View.GONE);
 
-And make sure your "onStartCommand()" contains:
+So initially all three are hidden.
 
-@Override
-public int onStartCommand(
-        Intent intent,
-        int flags,
-        int startId) {
+Then:
 
-    if (intent != null) {
+WhatsApp opened → 🟢 appears
 
-        String action = intent.getAction();
+Long press → 🔵 rectangle appears
 
-        if (ACTION_SHOW.equals(action)) {
+Long press again → 🔵 rectangle disappears
 
-            floatingView.setVisibility(
-                    View.VISIBLE
-            );
+Leave WhatsApp → 🟢 + 🔵 disappear
 
-        } else if (ACTION_HIDE.equals(action)) {
-
-            floatingView.setVisibility(
-                    View.GONE
-            );
-
-            selectionView.setVisibility(
-                    View.GONE
-            );
-
-            resizeHandleView.setVisibility(
-                    View.GONE
-            );
-
-            selectionVisible = false;
-        }
-    }
-
-    return START_STICKY;
-}
-
-One important thing
-
-If Android Studio still shows red after this, don't click "Create field" or "Create method."
-
-Send me a screenshot of the red "ACTION_SHOW"/"ACTION_HIDE" line, or paste your current "FloatingWidgetService.java", because then I can match the two files exactly.
+This should also preserve your existing dragging and resizing behavior.
