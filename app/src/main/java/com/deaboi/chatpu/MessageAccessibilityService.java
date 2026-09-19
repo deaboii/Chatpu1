@@ -5,7 +5,8 @@ import android.content.Intent;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
-public class MessageAccessibilityService extends AccessibilityService {
+public class MessageAccessibilityService
+        extends AccessibilityService {
 
     private static final String ACTION_SHOW =
             "com.deaboi.chatpu.SHOW_WIDGET";
@@ -14,11 +15,26 @@ public class MessageAccessibilityService extends AccessibilityService {
             "com.deaboi.chatpu.HIDE_WIDGET";
 
 
-    @Override
-    public void onAccessibilityEvent(AccessibilityEvent event) {
+    // =====================================================
+    // ACCESSIBILITY SERVICE CONNECTED
+    // =====================================================
 
-        // Only check window changes
-        // This tells us which app is currently in front.
+    @Override
+    protected void onServiceConnected() {
+
+        super.onServiceConnected();
+
+        checkCurrentApp();
+    }
+
+
+    // =====================================================
+    // ACCESSIBILITY EVENT
+    // =====================================================
+
+    @Override
+    public void onAccessibilityEvent(
+            AccessibilityEvent event) {
 
         if (event.getEventType()
                 == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
@@ -28,13 +44,19 @@ public class MessageAccessibilityService extends AccessibilityService {
     }
 
 
+    // =====================================================
+    // CHECK CURRENT APP
+    // =====================================================
+
     private void checkCurrentApp() {
 
         AccessibilityNodeInfo root =
                 getRootInActiveWindow();
 
         if (root == null) {
+
             hideFloatingWidget();
+
             return;
         }
 
@@ -43,7 +65,9 @@ public class MessageAccessibilityService extends AccessibilityService {
                 root.getPackageName();
 
         if (packageName == null) {
+
             hideFloatingWidget();
+
             return;
         }
 
@@ -52,20 +76,19 @@ public class MessageAccessibilityService extends AccessibilityService {
                 packageName.toString();
 
 
-        // ==========================================
+        // =================================================
         // WHATSAPP
-        // ==========================================
+        // =================================================
 
         if (currentPackage.equals("com.whatsapp")) {
 
             showFloatingWidget();
-
         }
 
 
-        // ==========================================
+        // =================================================
         // ANY OTHER APP
-        // ==========================================
+        // =================================================
 
         else {
 
@@ -74,9 +97,9 @@ public class MessageAccessibilityService extends AccessibilityService {
     }
 
 
-    // ==========================================
-    // SHOW WIDGET
-    // ==========================================
+    // =====================================================
+    // SHOW
+    // =====================================================
 
     private void showFloatingWidget() {
 
@@ -86,15 +109,17 @@ public class MessageAccessibilityService extends AccessibilityService {
                         FloatingWidgetService.class
                 );
 
-        intent.setAction(ACTION_SHOW);
+        intent.setAction(
+                ACTION_SHOW
+        );
 
         startService(intent);
     }
 
 
-    // ==========================================
-    // HIDE WIDGET
-    // ==========================================
+    // =====================================================
+    // HIDE
+    // =====================================================
 
     private void hideFloatingWidget() {
 
@@ -104,15 +129,17 @@ public class MessageAccessibilityService extends AccessibilityService {
                         FloatingWidgetService.class
                 );
 
-        intent.setAction(ACTION_HIDE);
+        intent.setAction(
+                ACTION_HIDE
+        );
 
         startService(intent);
     }
 
 
-    // ==========================================
+    // =====================================================
     // READ WHATSAPP NODES
-    // ==========================================
+    // =====================================================
 
     private void readNode(
             AccessibilityNodeInfo node) {
@@ -148,35 +175,12 @@ public class MessageAccessibilityService extends AccessibilityService {
     }
 
 
+    // =====================================================
+    // INTERRUPT
+    // =====================================================
+
     @Override
     public void onInterrupt() {
 
     }
 }
-
-One more important change
-
-Your "FloatingWidgetService" should not automatically show the widget when it starts.
-
-At the end of "onCreate()", you already have:
-
-selectionView.setVisibility(View.GONE);
-resizeHandleView.setVisibility(View.GONE);
-
-Change/add this immediately after it:
-
-floatingView.setVisibility(View.GONE);
-
-So initially all three are hidden.
-
-Then:
-
-WhatsApp opened → 🟢 appears
-
-Long press → 🔵 rectangle appears
-
-Long press again → 🔵 rectangle disappears
-
-Leave WhatsApp → 🟢 + 🔵 disappear
-
-This should also preserve your existing dragging and resizing behavior.
