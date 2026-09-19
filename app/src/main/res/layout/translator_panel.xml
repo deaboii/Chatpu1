@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="280dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#FFFFFF">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Translator"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#000000"/>
+
+    <EditText
+        android:id="@+id/inputText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Type or paste text"
+        android:inputType="textMultiLine"
+        android:minLines="3"/>
+
+    <Button
+        android:id="@+id/translateButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Translate"/>
+
+</LinearLayout>
