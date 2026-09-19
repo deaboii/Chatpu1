@@ -26,7 +26,6 @@ public class FloatingWidgetService extends Service {
     private WindowManager.LayoutParams selectionParams;
 
     // Blue selection rectangle size
-    private final int SELECTION_WIDTH = 500;
     private final int SELECTION_HEIGHT = 180;
 
     @Override
@@ -36,6 +35,10 @@ public class FloatingWidgetService extends Service {
 
         windowManager =
                 (WindowManager) getSystemService(WINDOW_SERVICE);
+
+        android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(metrics);
+        int screenWidth = metrics.widthPixels;
 
         // -----------------------------
         // GREEN FLOATING BUTTON
@@ -68,7 +71,7 @@ public class FloatingWidgetService extends Service {
         selectionView = new SelectionView();
 
         selectionParams = new WindowManager.LayoutParams(
-                SELECTION_WIDTH,
+                screenWidth -floatingParams.x-65-10,
                 SELECTION_HEIGHT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
@@ -79,7 +82,7 @@ public class FloatingWidgetService extends Service {
 
         // Put blue rectangle immediately to LEFT of green button
         selectionParams.x =
-                floatingParams.x + 65 + 10;
+                floatingParams.x + 10;
 
         selectionParams.y =
                 floatingParams.y + (65 - SELECTION_HEIGHT) / 2;
@@ -124,12 +127,14 @@ public class FloatingWidgetService extends Service {
                         floatingParams.y =
                                 initialY +
                                 (int) (event.getRawY() - initialTouchY);
-
+                        selectionParams.width = screenWidth -floatingParams.x-65-10;
+                        selectionParams.x =floatingParams.x+10;
+                        selectionParams.y = floatingParams.y + (65-SELECTION_HEIGHT)/2;
 
                         // Move GREEN button
                         windowManager.updateViewLayout(
-                                floatingView,
-                                floatingParams
+                                selectionView,
+                                selectionParams
                         );
 
 
