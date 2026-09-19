@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
+import android.os.Handler;
 import android.os.IBinder;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -21,24 +22,43 @@ public class FloatingWidgetService extends Service {
 
     private View floatingView;
     private View selectionView;
+    private View resizeHandleView;
 
     private WindowManager.LayoutParams floatingParams;
     private WindowManager.LayoutParams selectionParams;
+    private WindowManager.LayoutParams resizeHandleParams;
 
-    // Blue selection rectangle size
-    private final int SELECTION_HEIGHT = 180;
+    private int selectionHeight = 180;
+
+    private final int RESIZE_HANDLE_HEIGHT = 40;
+
+    // Long press settings
+    private final Handler handler = new Handler();
+    private boolean selectionVisible = false;
+    private boolean longPressTriggered = false;
+
+    private float downX;
+    private float downY;
+
+    private static FloatingWidgetService instance;
 
     @Override
     public void onCreate() {
 
         super.onCreate();
 
+        instance = this;
+
         windowManager =
                 (WindowManager) getSystemService(WINDOW_SERVICE);
 
-        android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
+        android.util.DisplayMetrics metrics =
+                new android.util.DisplayMetrics();
+
         windowManager.getDefaultDisplay().getMetrics(metrics);
+
         int screenWidth = metrics.widthPixels;
+
 
         // -----------------------------
         // GREEN FLOATING BUTTON
@@ -55,13 +75,16 @@ public class FloatingWidgetService extends Service {
                 PixelFormat.TRANSLUCENT
         );
 
-        floatingParams.gravity = Gravity.TOP | Gravity.END;
+        floatingParams.gravity =
+                Gravity.TOP | Gravity.END;
 
-        // Initial position of green button
         floatingParams.x = 20;
         floatingParams.y = 300;
 
-        windowManager.addView(floatingView, floatingParams);
+        windowManager.addView(
+                floatingView,
+                floatingParams
+        );
 
 
         // -----------------------------
@@ -71,102 +94,414 @@ public class FloatingWidgetService extends Service {
         selectionView = new SelectionView();
 
         selectionParams = new WindowManager.LayoutParams(
-                screenWidth -floatingParams.x-65-10,
-                SELECTION_HEIGHT,
+                screenWidth - floatingParams.x - 65 - 10,
+                selectionHeight,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                PixelFormat.TRANSLUCENT
+        );
+
+        selectionParams.gravity =
+                Gravity.TOP | Gravity.END;
+
+        selectionParams.x =
+                floatingParams.x + 10;
+
+        selectionParams.y =
+                floatingParams.y
+                        + (65 - selectionHeight) / 2;
+
+        windowManager.addView(
+                selectionView,
+                selectionParams
+        );
+
+
+        // -----------------------------
+        // RESIZE HANDLE
+        // -----------------------------
+
+        resizeHandleView = new ResizeHandleView();
+
+        resizeHandleParams = new WindowManager.LayoutParams(
+                screenWidth - floatingParams.x - 65 - 10,
+                RESIZE_HANDLE_HEIGHT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
         );
 
-        selectionParams.gravity = Gravity.TOP | Gravity.END;
+        resizeHandleParams.gravity =
+                Gravity.TOP | Gravity.END;
 
-        // Put blue rectangle immediately to LEFT of green button
-        selectionParams.x =
-                floatingParams.x + 10;
+        resizeHandleParams.x =
+                selectionParams.x;
 
-        selectionParams.y =
-                floatingParams.y + (65 - SELECTION_HEIGHT) / 2;
+        resizeHandleParams.y =
+                selectionParams.y
+                        + selectionParams.height
+                        - RESIZE_HANDLE_HEIGHT / 2;
 
-        windowManager.addView(selectionView, selectionParams);
+        windowManager.addView(
+                resizeHandleView,
+                resizeHandleParams
+        );
+
+
+        // Hide selection initially
+        selectionView.setVisibility(View.GONE);
+        resizeHandleView.setVisibility(View.GONE);
 
 
         // -----------------------------
-        // DRAG GREEN BUTTON
+        // GREEN BUTTON TOUCH
         // -----------------------------
 
-        floatingView.setOnTouchListener(new View.OnTouchListener() {
+        floatingView.setOnTouchListener(
+                new View.OnTouchListener() {
 
-            private int initialX;
-            private int initialY;
+                    private int initialX;
+                    private int initialY;
 
-            private float initialTouchX;
-            private float initialTouchY;
+                    private float initialTouchX;
+                    private float initialTouchY;
 
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
+                    private boolean moved = false;
 
-                switch (event.getAction()) {
+                    private final Runnable longPressRunnable =
+                            new Runnable() {
 
-                    case MotionEvent.ACTION_DOWN:
+                                @Override
+                                public void run() {
 
-                        initialX = floatingParams.x;
-                        initialY = floatingParams.y;
+                                    if (!moved) {
 
-                        initialTouchX = event.getRawX();
-                        initialTouchY = event.getRawY();
+                                        longPressTriggered = true;
 
-                        return true;
-
-
-                    case MotionEvent.ACTION_MOVE:
-
-                        floatingParams.x =
-                                initialX +
-                                        (int) (initialTouchX - event.getRawX());
-
-                        floatingParams.y =
-                                initialY +
-                                        (int) (event.getRawY() - initialTouchY);
+                                        toggleSelection();
+                                    }
+                                }
+                            };
 
 
-                        // Move GREEN button
-                        windowManager.updateViewLayout(
-                                floatingView,
-                                floatingParams
-                        );
+                    @Override
+                    public boolean onTouch(
+                            View v,
+                            MotionEvent event) {
+
+                        switch (event.getAction()) {
+
+                            case MotionEvent.ACTION_DOWN:
+
+                                initialX =
+                                        floatingParams.x;
+
+                                initialY =
+                                        floatingParams.y;
+
+                                initialTouchX =
+                                        event.getRawX();
+
+                                initialTouchY =
+                                        event.getRawY();
+
+                                downX =
+                                        event.getRawX();
+
+                                downY =
+                                        event.getRawY();
+
+                                moved = false;
+
+                                longPressTriggered = false;
+
+                                handler.postDelayed(
+                                        longPressRunnable,
+                                        600
+                                );
+
+                                return true;
 
 
-                        // Resize and move BLUE rectangle
-                        selectionParams.width =
-                                screenWidth - floatingParams.x - 65 - 10;
+                            case MotionEvent.ACTION_MOVE:
 
-                        selectionParams.x =
-                                floatingParams.x + 10;
+                                float dx =
+                                        Math.abs(
+                                                event.getRawX()
+                                                        - downX
+                                        );
 
-                        selectionParams.y =
-                                floatingParams.y +
-                                        (65 - SELECTION_HEIGHT) / 2;
+                                float dy =
+                                        Math.abs(
+                                                event.getRawY()
+                                                        - downY
+                                        );
+
+                                if (dx > 10 || dy > 10) {
+
+                                    moved = true;
+
+                                    handler.removeCallbacks(
+                                            longPressRunnable
+                                    );
+                                }
 
 
-                        windowManager.updateViewLayout(
-                                selectionView,
-                                selectionParams
-                        );
+                                // Move green button
+                                floatingParams.x =
+                                        initialX
+                                                + (int) (
+                                                initialTouchX
+                                                        - event.getRawX()
+                                        );
 
-                        return true;
-                    case MotionEvent.ACTION_UP:
+                                floatingParams.y =
+                                        initialY
+                                                + (int) (
+                                                event.getRawY()
+                                                        - initialTouchY
+                                        );
 
-                        return true;
+
+                                windowManager.updateViewLayout(
+                                        floatingView,
+                                        floatingParams
+                                );
+
+
+                                // Update blue rectangle position
+                                selectionParams.width =
+                                        screenWidth
+                                                - floatingParams.x
+                                                - 65
+                                                - 10;
+
+                                selectionParams.x =
+                                        floatingParams.x + 10;
+
+                                selectionParams.y =
+                                        floatingParams.y
+                                                + (65 - selectionHeight) / 2;
+
+
+                                if (selectionVisible) {
+
+                                    windowManager.updateViewLayout(
+                                            selectionView,
+                                            selectionParams
+                                    );
+                                }
+
+
+                                // Update resize handle
+                                resizeHandleParams.width =
+                                        selectionParams.width;
+
+                                resizeHandleParams.x =
+                                        selectionParams.x;
+
+                                resizeHandleParams.y =
+                                        selectionParams.y
+                                                + selectionParams.height
+                                                - RESIZE_HANDLE_HEIGHT / 2;
+
+
+                                if (selectionVisible) {
+
+                                    windowManager.updateViewLayout(
+                                            resizeHandleView,
+                                            resizeHandleParams
+                                    );
+                                }
+
+                                return true;
+
+
+                            case MotionEvent.ACTION_UP:
+
+                                handler.removeCallbacks(
+                                        longPressRunnable
+                                );
+
+                                return true;
+
+
+                            case MotionEvent.ACTION_CANCEL:
+
+                                handler.removeCallbacks(
+                                        longPressRunnable
+                                );
+
+                                return true;
+                        }
+
+                        return false;
+                    }
                 }
+        );
 
-                return false;
-            }
-        });
+
+        // -----------------------------
+        // RESIZE HANDLE TOUCH
+        // -----------------------------
+
+        resizeHandleView.setOnTouchListener(
+                new View.OnTouchListener() {
+
+                    private float initialTouchY;
+                    private int initialHeight;
+
+                    @Override
+                    public boolean onTouch(
+                            View v,
+                            MotionEvent event) {
+
+                        switch (event.getAction()) {
+
+                            case MotionEvent.ACTION_DOWN:
+
+                                initialTouchY =
+                                        event.getRawY();
+
+                                initialHeight =
+                                        selectionParams.height;
+
+                                return true;
+
+
+                            case MotionEvent.ACTION_MOVE:
+
+                                int newHeight =
+                                        initialHeight
+                                                + (int) (
+                                                event.getRawY()
+                                                        - initialTouchY
+                                        );
+
+
+                                if (newHeight < 80) {
+                                    newHeight = 80;
+                                }
+
+                                if (newHeight > 1000) {
+                                    newHeight = 1000;
+                                }
+
+
+                                selectionHeight =
+                                        newHeight;
+
+                                selectionParams.height =
+                                        newHeight;
+
+
+                                windowManager.updateViewLayout(
+                                        selectionView,
+                                        selectionParams
+                                );
+
+
+                                resizeHandleParams.width =
+                                        selectionParams.width;
+
+                                resizeHandleParams.x =
+                                        selectionParams.x;
+
+                                resizeHandleParams.y =
+                                        selectionParams.y
+                                                + selectionParams.height
+                                                - RESIZE_HANDLE_HEIGHT / 2;
+
+
+                                windowManager.updateViewLayout(
+                                        resizeHandleView,
+                                        resizeHandleParams
+                                );
+
+                                return true;
+
+
+                            case MotionEvent.ACTION_UP:
+
+                                return true;
+                        }
+
+                        return false;
+                    }
+                }
+        );
     }
 
 
     // -----------------------------
-    // BLUE RECTANGLE VIEW
+    // SHOW / HIDE SELECTION
+    // -----------------------------
+
+    private void toggleSelection() {
+
+        selectionVisible =
+                !selectionVisible;
+
+        if (selectionVisible) {
+
+            selectionView.setVisibility(
+                    View.VISIBLE
+            );
+
+            resizeHandleView.setVisibility(
+                    View.VISIBLE
+            );
+
+        } else {
+
+            selectionView.setVisibility(
+                    View.GONE
+            );
+
+            resizeHandleView.setVisibility(
+                    View.GONE
+            );
+        }
+    }
+
+
+    // -----------------------------
+    // WHATSAPP VISIBILITY
+    // -----------------------------
+
+    public static void setWhatsAppVisible(
+            boolean visible) {
+
+        if (instance == null ||
+                instance.floatingView == null) {
+            return;
+        }
+
+        instance.floatingView.setVisibility(
+                visible
+                        ? View.VISIBLE
+                        : View.GONE
+        );
+
+        // Always hide selection when leaving WhatsApp
+        if (!visible) {
+
+            instance.selectionVisible = false;
+
+            instance.selectionView.setVisibility(
+                    View.GONE
+            );
+
+            instance.resizeHandleView.setVisibility(
+                    View.GONE
+            );
+        }
+    }
+
+
+    // -----------------------------
+    // BLUE RECTANGLE
     // -----------------------------
 
     private class SelectionView extends View {
@@ -184,8 +519,9 @@ public class FloatingWidgetService extends Service {
             paint.setStrokeWidth(5);
             paint.setAntiAlias(true);
 
-            // Transparent inside
-            setBackgroundColor(Color.TRANSPARENT);
+            setBackgroundColor(
+                    Color.TRANSPARENT
+            );
         }
 
 
@@ -207,6 +543,50 @@ public class FloatingWidgetService extends Service {
     }
 
 
+    // -----------------------------
+    // RESIZE HANDLE
+    // -----------------------------
+
+    private class ResizeHandleView extends View {
+
+        private Paint paint;
+
+        public ResizeHandleView() {
+
+            super(FloatingWidgetService.this);
+
+            paint = new Paint();
+
+            paint.setColor(Color.BLUE);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setAntiAlias(true);
+
+            setBackgroundColor(
+                    Color.TRANSPARENT
+            );
+        }
+
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+
+            super.onDraw(canvas);
+
+            canvas.drawRect(
+                    0,
+                    getHeight() - 5,
+                    getWidth(),
+                    getHeight(),
+                    paint
+            );
+        }
+    }
+
+
+    // -----------------------------
+    // BIND
+    // -----------------------------
+
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -215,10 +595,18 @@ public class FloatingWidgetService extends Service {
     }
 
 
+    // -----------------------------
+    // DESTROY
+    // -----------------------------
+
     @Override
     public void onDestroy() {
 
         super.onDestroy();
+
+        instance = null;
+
+        handler.removeCallbacksAndMessages(null);
 
         if (floatingView != null) {
             windowManager.removeView(floatingView);
@@ -226,6 +614,10 @@ public class FloatingWidgetService extends Service {
 
         if (selectionView != null) {
             windowManager.removeView(selectionView);
+        }
+
+        if (resizeHandleView != null) {
+            windowManager.removeView(resizeHandleView);
         }
     }
 }
