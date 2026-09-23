@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Required on API 30+ so an explicit setPackage("com.whatsapp") intent
+         can resolve — without this, startActivity silently fails with
+         ActivityNotFoundException even though WhatsApp is installed. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+    </queries>
+
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <uses-permission android:name="android.permission.INTERNET" />

@@ -361,6 +361,13 @@ public class FloatingWidgetService extends Service {
 
                                 if (!moved && !longPressed) {
 
+                                    // --- POC: WhatsApp pre-filled text test ---
+                                    // Purely additive — fires alongside whatever
+                                    // the tap already does below. Safe to remove
+                                    // this one call to revert with zero side
+                                    // effects on the capture/permission flow.
+                                    openWhatsAppWithPrefilledText();
+
                                     if (mediaProjection != null) {
 
                                         // Already have permission from a
@@ -489,6 +496,66 @@ public class FloatingWidgetService extends Service {
                     }
                 }
         );
+    }
+
+    // --- POC constants: WhatsApp pre-filled text test ---
+    // Phone number in international format, digits only, no "+".
+    private static final String POC_TEST_PHONE = "919777535210";
+    private static final String POC_TEST_MESSAGE = "hello world";
+
+    /**
+     * POC: opens the WhatsApp chat for POC_TEST_PHONE with POC_TEST_MESSAGE
+     * already typed into the compose box (not sent — the user still has to
+     * tap send). Uses the standard wa.me "click to chat" deep link, so it
+     * does not depend on WhatsApp's internal view hierarchy and will not
+     * conflict with anything the accessibility service or floating widget
+     * already does.
+     */
+    private void openWhatsAppWithPrefilledText() {
+
+        try {
+
+            String url =
+                    "https://wa.me/"
+                            + POC_TEST_PHONE
+                            + "?text="
+                            + Uri.encode(POC_TEST_MESSAGE);
+
+            Intent whatsappIntent =
+                    new Intent(Intent.ACTION_VIEW);
+
+            whatsappIntent.setData(
+                    Uri.parse(url)
+            );
+
+            whatsappIntent.setPackage("com.whatsapp");
+
+            whatsappIntent.addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK
+            );
+
+            startActivity(whatsappIntent);
+
+            android.util.Log.d(
+                    "CHATPU_POC",
+                    "Opened WhatsApp chat with pre-filled text for "
+                            + POC_TEST_PHONE
+            );
+
+        } catch (Exception e) {
+
+            android.util.Log.e(
+                    "CHATPU_POC",
+                    "Failed to open WhatsApp with pre-filled text",
+                    e
+            );
+
+            Toast.makeText(
+                    this,
+                    "Couldn't open WhatsApp: " + e.getMessage(),
+                    Toast.LENGTH_SHORT
+            ).show();
+        }
     }
 
     private void toggleSelection() {

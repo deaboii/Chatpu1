@@ -2,131 +2,210 @@ package com.deaboi.chatpu;
 
 import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
+import android.os.Bundle;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 public class MessageAccessibilityService
-extends AccessibilityService {
+        extends AccessibilityService {
 
-@Override
-protected void onServiceConnected() {
+    private static MessageAccessibilityService instance;
 
-    super.onServiceConnected();
+    public static MessageAccessibilityService getInstance() {
+        return instance;
+    }
 
-    checkCurrentApp();
-}
+    @Override
+    protected void onServiceConnected() {
 
-@Override
-public void onAccessibilityEvent(
-        AccessibilityEvent event) {
+        super.onServiceConnected();
 
-    if (event.getEventType()
-            == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-            || event.getEventType()
-            == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+        instance = this;
 
         checkCurrentApp();
     }
-}
 
-private void checkCurrentApp() {
+    @Override
+    public void onAccessibilityEvent(
+            AccessibilityEvent event) {
 
-    AccessibilityNodeInfo root =
-            getRootInActiveWindow();
+        if (event.getEventType()
+                == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+                || event.getEventType()
+                == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
 
-    if (root == null) {
-
-        hideFloatingWidget();
-
-        return;
+            checkCurrentApp();
+        }
     }
 
-    CharSequence packageName =
-            root.getPackageName();
+    private void checkCurrentApp() {
 
-    if (packageName == null) {
+        AccessibilityNodeInfo root =
+                getRootInActiveWindow();
 
-        hideFloatingWidget();
+        if (root == null) {
 
-        return;
+            hideFloatingWidget();
+
+            return;
+        }
+
+        CharSequence packageName =
+                root.getPackageName();
+
+        if (packageName == null) {
+
+            hideFloatingWidget();
+
+            return;
+        }
+
+        String currentPackage =
+                packageName.toString();
+
+        if (currentPackage.equals("com.whatsapp")) {
+
+            showFloatingWidget();
+
+        } else {
+
+            hideFloatingWidget();
+        }
     }
 
-    String currentPackage =
-            packageName.toString();
+    private void showFloatingWidget() {
 
-    if (currentPackage.equals("com.whatsapp")) {
+        Intent intent =
+                new Intent(
+                        this,
+                        FloatingWidgetService.class
+                );
 
-        showFloatingWidget();
+        intent.setAction(
+                FloatingWidgetService.ACTION_SHOW
+        );
 
-    } else {
-
-        hideFloatingWidget();
-    }
-}
-
-private void showFloatingWidget() {
-
-    Intent intent =
-            new Intent(
-                    this,
-                    FloatingWidgetService.class
-            );
-
-    intent.setAction(
-            FloatingWidgetService.ACTION_SHOW
-    );
-
-    startService(intent);
-}
-
-private void hideFloatingWidget() {
-
-    Intent intent =
-            new Intent(
-                    this,
-                    FloatingWidgetService.class
-            );
-
-    intent.setAction(
-            FloatingWidgetService.ACTION_HIDE
-    );
-
-    startService(intent);
-}
-
-private void readNode(
-        AccessibilityNodeInfo node) {
-
-    if (node == null) {
-        return;
+        startService(intent);
     }
 
-    if (node.getText() != null) {
+    private void hideFloatingWidget() {
 
-        android.util.Log.d(
-                "WHATSAPP_NODE",
-                "TEXT=" + node.getText()
+        Intent intent =
+                new Intent(
+                        this,
+                        FloatingWidgetService.class
+                );
+
+        intent.setAction(
+                FloatingWidgetService.ACTION_HIDE
+        );
+
+        startService(intent);
+    }
+
+    // POC method — finds WhatsApp's message compose box and sets its
+// text directly via the accessibility API, instead of relying on
+// clipboard + manual paste. Returns false if no editable field was
+// found in the current window (e.g. you're not on a chat screen).
+    public boolean insertTextIntoComposeBox(String text) {
+
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+
+        if (root == null) {
+            return false;
+        }
+
+        AccessibilityNodeInfo editable = findEditableNode(root);
+
+        if (editable == null) {
+            return false;
+        }
+
+        Bundle arguments = new Bundle();
+
+        arguments.putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                text
+        );
+
+        return editable.performAction(
+                AccessibilityNodeInfo.ACTION_SET_TEXT,
+                arguments
         );
     }
 
-    for (
-            int i = 0;
-            i < node.getChildCount();
-            i++
-    ) {
+    private AccessibilityNodeInfo findEditableNode(
+            AccessibilityNodeInfo node) {
 
-        AccessibilityNodeInfo child =
-                node.getChild(i);
+        if (node == null) {
+            return null;
+        }
 
-        if (child != null) {
+        if (node.isEditable()) {
+            return node;
+        }
 
-            readNode(child);
+        for (int i = 0; i < node.getChildCount(); i++) {
+
+            AccessibilityNodeInfo child = node.getChild(i);
+
+            AccessibilityNodeInfo result = findEditableNode(child);
+
+            if (result != null) {
+                return result;
+            }
+
+            if (child != null) {
+                child.recycle();
+            }
+        }
+
+        return null;
+    }
+
+    @Override
+    public void onDestroy() {
+
+        super.onDestroy();
+
+        if (instance == this) {
+            instance = null;
         }
     }
-}
 
-@Override
-public void onInterrupt() {
-}
+    private void readNode(
+            AccessibilityNodeInfo node) {
+
+        if (node == null) {
+            return;
+        }
+
+        if (node.getText() != null) {
+
+            android.util.Log.d(
+                    "WHATSAPP_NODE",
+                    "TEXT=" + node.getText()
+            );
+        }
+
+        for (
+                int i = 0;
+                i < node.getChildCount();
+                i++
+        ) {
+
+            AccessibilityNodeInfo child =
+                    node.getChild(i);
+
+            if (child != null) {
+
+                readNode(child);
+            }
+        }
+    }
+
+    @Override
+    public void onInterrupt() {
+    }
 
 }
