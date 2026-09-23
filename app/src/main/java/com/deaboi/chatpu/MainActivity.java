@@ -15,134 +15,153 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
-private Button buttonStart;
-private MediaProjectionManager mediaProjectionManager;
+    private Button buttonStart;
+    private MediaProjectionManager mediaProjectionManager;
 
-private final ActivityResultLauncher<Intent> screenCaptureLauncher =
-        registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
+    private final ActivityResultLauncher<Intent> screenCaptureLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
 
-                    if (result.getResultCode() == Activity.RESULT_OK
-                            && result.getData() != null) {
+                        if (result.getResultCode() == Activity.RESULT_OK
+                                && result.getData() != null) {
 
-                        Intent serviceIntent =
-                                new Intent(
-                                        this,
-                                        FloatingWidgetService.class
-                                );
+                            Intent serviceIntent =
+                                    new Intent(
+                                            this,
+                                            FloatingWidgetService.class
+                                    );
 
-                        serviceIntent.setAction(
-                                FloatingWidgetService.ACTION_CAPTURE_PERMISSION
-                        );
+                            serviceIntent.setAction(
+                                    FloatingWidgetService.ACTION_CAPTURE_PERMISSION
+                            );
 
-                        serviceIntent.putExtra(
-                                "resultCode",
-                                result.getResultCode()
-                        );
+                            serviceIntent.putExtra(
+                                    "resultCode",
+                                    result.getResultCode()
+                            );
 
-                        serviceIntent.putExtra(
-                                "resultData",
-                                result.getData()
-                        );
+                            serviceIntent.putExtra(
+                                    "resultData",
+                                    result.getData()
+                            );
 
-                        startService(serviceIntent);
+                            startService(serviceIntent);
 
-                    } else {
+                        } else {
 
-                        Toast.makeText(
-                                this,
-                                "Screen capture permission cancelled",
-                                Toast.LENGTH_SHORT
-                        ).show();
+                            Toast.makeText(
+                                    this,
+                                    "Screen capture permission cancelled",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+
+                        finish();
                     }
-
-                    finish();
-                }
-        );
-
-@Override
-protected void onCreate(Bundle savedInstanceState) {
-
-    super.onCreate(savedInstanceState);
-
-    setContentView(R.layout.activity_main);
-
-    buttonStart = findViewById(R.id.buttonStart);
-
-    mediaProjectionManager =
-            (MediaProjectionManager)
-                    getSystemService(MEDIA_PROJECTION_SERVICE);
-
-    buttonStart.setOnClickListener(
-            v -> startChatpu()
-    );
-
-    if (FloatingWidgetService.ACTION_REQUEST_CAPTURE.equals(
-            getIntent().getAction())) {
-
-        requestScreenCapture();
-    }
-}
-
-private void startChatpu() {
-
-    if (!Settings.canDrawOverlays(this)) {
-
-        Toast.makeText(
-                this,
-                "Please allow Display over other apps",
-                Toast.LENGTH_LONG
-        ).show();
-
-        Intent intent =
-                new Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse(
-                                "package:" + getPackageName()
-                        )
-                );
-
-        startActivity(intent);
-
-        return;
-    }
-
-    Intent floatingIntent =
-            new Intent(
-                    this,
-                    FloatingWidgetService.class
             );
 
-    startService(floatingIntent);
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
 
-    Toast.makeText(
-            this,
-            "Chatpu started. Open WhatsApp.",
-            Toast.LENGTH_SHORT
-    ).show();
-}
+        super.onCreate(savedInstanceState);
 
-private void requestScreenCapture() {
+        setContentView(R.layout.activity_main);
 
-    if (mediaProjectionManager == null) {
+        buttonStart = findViewById(R.id.buttonStart);
+
+        mediaProjectionManager =
+                (MediaProjectionManager)
+                        getSystemService(MEDIA_PROJECTION_SERVICE);
+
+        buttonStart.setOnClickListener(
+                v -> startChatpu()
+        );
+
+        if (FloatingWidgetService.ACTION_REQUEST_CAPTURE.equals(
+                getIntent().getAction())) {
+
+            requestScreenCapture();
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+
+        super.onNewIntent(intent);
+
+        // MainActivity gets reused (FLAG_ACTIVITY_SINGLE_TOP) instead of
+        // recreated once it's already in memory, so onCreate() won't fire
+        // again — without this override, tapping the bubble after the
+        // first time just reopened the existing MainActivity screen and
+        // never requested screen capture at all.
+        setIntent(intent);
+
+        if (FloatingWidgetService.ACTION_REQUEST_CAPTURE.equals(
+                intent.getAction())) {
+
+            requestScreenCapture();
+        }
+    }
+
+    private void startChatpu() {
+
+        if (!Settings.canDrawOverlays(this)) {
+
+            Toast.makeText(
+                    this,
+                    "Please allow Display over other apps",
+                    Toast.LENGTH_LONG
+            ).show();
+
+            Intent intent =
+                    new Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse(
+                                    "package:" + getPackageName()
+                            )
+                    );
+
+            startActivity(intent);
+
+            return;
+        }
+
+        Intent floatingIntent =
+                new Intent(
+                        this,
+                        FloatingWidgetService.class
+                );
+
+        startService(floatingIntent);
 
         Toast.makeText(
                 this,
-                "Screen capture is not available",
+                "Chatpu started. Open WhatsApp.",
                 Toast.LENGTH_SHORT
         ).show();
-
-        finish();
-
-        return;
     }
 
-    Intent captureIntent =
-            mediaProjectionManager
-                    .createScreenCaptureIntent();
+    private void requestScreenCapture() {
 
-    screenCaptureLauncher.launch(captureIntent);
-}
+        if (mediaProjectionManager == null) {
+
+            Toast.makeText(
+                    this,
+                    "Screen capture is not available",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            finish();
+
+            return;
+        }
+
+        Intent captureIntent =
+                mediaProjectionManager
+                        .createScreenCaptureIntent();
+
+        screenCaptureLauncher.launch(captureIntent);
+    }
 
 }

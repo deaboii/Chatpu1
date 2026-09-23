@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <uses-permission
@@ -19,7 +21,10 @@
         android:theme="@style/Theme.Chatpu"
         tools:targetApi="31" >
         <!-- Inside <application> -->
-        <service android:name=".FloatingWidgetService" android:exported="false"/>
+        <service
+            android:name=".FloatingWidgetService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection"/>
         <service
             android:name=".MessageAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
@@ -28,9 +33,9 @@
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
-          <meta-data
-              android:name="android.accessibilityservice"
-              android:resource="@xml/accessibility_service_config"/>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config"/>
 
 
         </service>
